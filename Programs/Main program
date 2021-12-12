@@ -1,0 +1,127 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clc
+clear all;
+close all;
+load ('MapData.mat');
+load ('TerrainData.mat');
+WayPoints = [];
+WayPointsAll = [];
+OPEN_COUNT = 0;
+OPEN_COUNT_ALL = 0;
+%%%%%%Terrain Data Fill%%%%%%%
+%  MAX_Final_Data = max(Cut_Data);
+%  MIN_Final_Data = min(Cut_Data);
+%  for i=1:100
+%      for j=1:100
+%          New_Data(i,j) = ceil((Cut_Data(i,j)-MIN_Final_Data)/100);
+%          Display_Data(i,j) = (Cut_Data(i,j)-MIN_Final_Data)/100;
+%      end
+%  end
+%%%%%%%%%%Start%%%%%%%%%%%%%%
+MAX_X=100;
+MAX_Y=100;
+MAX_Z=50;
+a=10;
+b=10;
+c=8;
+%%%%%%%%%%%Target%%%%%%%%%%%%%%
+d=50;
+e=40;
+f=10;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+MAP=2*(ones(MAX_X,MAX_Y,MAX_Z));
+% Initialize the MAP with input values
+% Obstacle=-1,Target = 0,Robot=1,Space=2
+%%%%%%%Make Random Terrain Data%%%%%%%
+%  for i=1:MAX_X
+%      for j=1:MAX_Y
+%          Z_UpData = New_Data(i,j);
+%          for z = 1:Z_UpData
+%              MAP(i,j,z) = -1;
+%          end
+%      end
+%  end
+CLOSED=[];
+%Put all obstacles on the Closed list
+%  k=1;%Dummy counter
+%  for i=1:MAX_X
+%      for j=1:MAX_Y
+%          Z_UpData = New_Data(i,j);
+%          for z = 1:Z_UpData
+%              CLOSED(k,1)=i;
+%              CLOSED(k,2)=j;
+%              CLOSED(k,3)=z;
+%              k=k+1;
+%          end
+%      end
+%  end
+
+%%%%%%%ALGORITHM START%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%Compute time%%%%%%%%%%%
+tic
+timerVal = tic
+[WayPoints,OPEN_COUNT] = A_star(MAX_X,MAX_Y,MAX_Z,a,b,c,d,e,f,MAP,CLOSED,Display_Data);
+toc(timerVal)
+elapsedTime = toc(timerVal)
+figure(1)
+axis([1 MAX_X 1 MAX_Y 1 MAX_Z]);
+plot3(WayPoints(:,1),WayPoints(:,2),WayPoints(:,3),'b','linewidth',2);
+hold on
+surf(Display_Data(1:100,1:100)','linestyle','none');
+plot3(a,b,c,'*');
+plot3(d,e,f,'^');
+set(gca,'xticklabel','');
+set(gca,'yticklabel','');
+set(gca,'zticklabel','');
+xlabel('latitude');
+ylabel('longitude');
+zlabel('Height (m)');
+grid on
+
+figure(2)
+X_WayPoints = WayPoints(end:-1:1,1);
+Y_WayPoints = WayPoints(end:-1:1,2);
+Z_WayPoints = WayPoints(end:-1:1,3);
+Total_X_WayPoints = [a X_WayPoints'];
+Total_Y_WayPoints = [b Y_WayPoints'];
+Total_Z_WayPoints = [c Z_WayPoints'];
+Terrain_Data = Final_Data(301:400,101:200);
+num = size(Total_X_WayPoints);
+for i= 1:num(1,2)
+    Terrain_Z_WayPoints(i) = Terrain_Data(Total_X_WayPoints(1,i),Total_Y_WayPoints(1,i));
+end
+lat_lonD = [];
+lat_lonDisReal = [];
+lat_lonDisReal(1) = 0;
+plat = (37.3565 - (25/54)*Total_X_WayPoints./100)';
+plon = (101.7130 + (25/54)*Total_Y_WayPoints./100)';
+pi=3.1415926;
+num = size(plat)-1;
+for i = 1:num(1,1)
+    lat_lonD(i)=distance(plat(i),plon(i),plat(i+1),plon(i+1));
+    lat_lonD(i)=lat_lonD(i)*6371*2*pi/360;
+    lat_lonDisReal(i+1) = lat_lonDisReal(i) + lat_lonD(i);
+end
+MIN_Final_Data = min(min(Final_Data(301:400,101:200)));
+Total_Z_WayPoints = Total_Z_WayPoints.*100 + MIN_Final_Data;
+h1 = plot(lat_lonDisReal,Total_Z_WayPoints,'b');
+hold on
+plot(lat_lonDisReal,Terrain_Z_WayPoints,'c');
+h2 = plot(lat_lonDisReal,Terrain_Z_WayPoints + 1000,'r');
+X_fill = lat_lonDisReal;
+Y_fill = Terrain_Z_WayPoints;
+Y_size = size(Y_fill);
+Y_fill_low = zeros(Y_size(1,1),Y_size(1,2));
+X_fillfor = [fliplr(X_fill),X_fill];
+Y_fillfor = [fliplr(Y_fill_low),Y_fill];
+h3 = fill(X_fillfor,Y_fillfor,'c','FaceAlpha',1,'EdgeAlpha',0.3,'EdgeColor','k');
+hleg = legend([h1,h2,h3],'vertical profile projection','upperboundary',' terrain vertical profile');
+set(hleg,'Location','NorthWest','Fontsize',8);
+hold off
+xlabel('vehicle distance km');
+ylabel('altitude(m)');
+xmaxTeam = lat_lonDisReal(1,num+1);
+xmax = xmaxTeam(1,1);
+axis([0 xmax 2500 5500]);
+grid on
